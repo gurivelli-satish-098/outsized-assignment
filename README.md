@@ -170,6 +170,238 @@ OPTIONS /{proxy+}
 └── serverless.yml    # AWS deployment configuration
 ```
 
+## 🔧 Handler Interfaces & Type Safety
+
+This project uses comprehensive TypeScript interfaces to ensure type safety across all Lambda handler functions. The interfaces are defined in `types/handler.ts` and provide strong typing for request/response structures.
+
+### 📁 Interface Structure
+
+```
+types/
+└── handler.ts          # All handler interfaces and types
+```
+
+### 🔗 Core Interfaces
+
+#### LambdaEvent
+
+Base interface for all Lambda function events:
+
+```typescript
+interface LambdaEvent {
+  body?: string;
+  user?: { id: string; role?: string };
+  httpMethod?: string;
+  queryStringParameters?: {
+    access_token?: string;
+    refresh_token?: string;
+  };
+  path?: string;
+  pathParameters?: { proxy?: string };
+  headers?: { [key: string]: string };
+}
+```
+
+#### LambdaResponse
+
+Standard response structure for all handlers:
+
+```typescript
+interface LambdaResponse {
+  statusCode: number;
+  headers: {
+    "Access-Control-Allow-Origin": string;
+    "Access-Control-Allow-Headers": string;
+    "Access-Control-Allow-Methods": string;
+    "Content-Type": string;
+  };
+  body: string;
+}
+```
+
+### 🔐 Authentication Interfaces
+
+#### SignUpRequest/SignUpResponse
+
+```typescript
+interface SignUpRequest {
+  email: string;
+  password: string;
+}
+
+interface SignUpResponse {
+  message: string;
+  data: { id: string; email: string };
+}
+```
+
+#### SignInRequest/SignInResponse
+
+```typescript
+interface SignInRequest {
+  email: string;
+  password: string;
+}
+
+interface SignInResponse {
+  message: string;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: { id: string; email: string; role: string };
+  };
+}
+```
+
+### 👥 User Management Interfaces
+
+#### CreateUserRequest/CreateUserResponse (Admin Only)
+
+```typescript
+interface CreateUserRequest {
+  email: string;
+  password: string;
+  role?: string;
+}
+
+interface CreateUserResponse {
+  message: string;
+  data: { id: string; email: string; role: string };
+}
+```
+
+#### DeleteUserRequest/DeleteUserResponse (Admin Only)
+
+```typescript
+interface DeleteUserRequest {
+  email: string;
+}
+
+interface DeleteUserResponse {
+  message: string;
+  data: { email: string; deleted: boolean };
+}
+```
+
+### 🔄 Password Reset Interfaces
+
+#### RequestPasswordResetRequest/RequestPasswordResetResponse
+
+```typescript
+interface RequestPasswordResetRequest {
+  email: string;
+}
+
+interface RequestPasswordResetResponse {
+  message: string;
+  data: { email: string; resetTokenSent: boolean };
+}
+```
+
+#### ResetPasswordRequest/ResetPasswordResponse
+
+```typescript
+interface ResetPasswordRequest {
+  accessToken: string;
+  refreshToken: string;
+  newPassword: string;
+}
+
+interface ResetPasswordResponse {
+  message: string;
+  data: { email: string; passwordUpdated: boolean };
+}
+```
+
+### 🎯 Handler Function Types
+
+All handler functions are strongly typed with specific function types:
+
+```typescript
+// Authentication handlers
+export type SignUpHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+export type SignInHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+export type EmailVerificationWebhookHandler = (
+  event: LambdaEvent
+) => Promise<LambdaResponse>;
+
+// User management handlers
+export type CreateUserHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+export type DeleteUserHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+export type FetchUserHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+
+// Password reset handlers
+export type RequestPasswordResetHandler = (
+  event: LambdaEvent
+) => Promise<LambdaResponse>;
+export type ResetPasswordHandler = (
+  event: LambdaEvent
+) => Promise<LambdaResponse>;
+
+// Utility handlers
+export type HealthHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+export type SyncRequestLogsHandler = (
+  event: LambdaEvent
+) => Promise<LambdaResponse>;
+export type CORSHandler = (event: LambdaEvent) => Promise<LambdaResponse>;
+```
+
+### 🔧 Usage in Handler Functions
+
+Each handler function is typed with its specific interface:
+
+```typescript
+// Example: Sign-up handler with proper typing
+export const signUp: SignUpHandler = async (event: LambdaEvent) => {
+  try {
+    // Parse request body with type safety
+    const { email, password }: SignUpRequest = JSON.parse(event.body || "{}");
+
+    // Validate input
+    await signUpValidator({ email, password });
+
+    // Process request
+    const result = await authService.signUp({ email, password });
+
+    // Return typed response
+    return successResponse({
+      message: "User signed up successfully",
+      data: result,
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+```
+
+### ✅ Benefits of Type Safety
+
+1. **Compile-time Error Detection**: TypeScript catches type mismatches before runtime
+2. **Better IDE Support**: Enhanced autocomplete and IntelliSense
+3. **Self-documenting Code**: Interfaces serve as living documentation
+4. **Refactoring Safety**: Changes to interfaces catch breaking changes early
+5. **Consistent API Structure**: Ensures all responses follow the same pattern
+
+### 🧪 Testing with Interfaces
+
+The interfaces are also used in test files to ensure type consistency:
+
+```typescript
+// Test example with proper typing
+it("should return success for valid credentials", async () => {
+  const event: LambdaEvent = {
+    body: JSON.stringify({
+      email: "test@example.com",
+      password: "password123",
+    }),
+    headers: { "x-forwarded-for": "127.0.0.1" },
+  };
+
+  const response: LambdaResponse = await signIn(event);
+  expect(response.statusCode).toBe(200);
+});
+```
+
 ## 📋 Prerequisites
 
 - **Node.js 16+**

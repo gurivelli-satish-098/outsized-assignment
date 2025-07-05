@@ -16,32 +16,34 @@ import { RedisClient } from "./clients/redis";
 import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
-
-/**
- * Lambda event interface for API Gateway events.
- * @property {string} [body] - The request body as a JSON string.
- * @property {{ id: string }} [user] - The authenticated user object.
- */
-interface LambdaEvent {
-  body?: string;
-  user?: { id: string };
-  httpMethod?: string;
-  queryStringParameters?: {
-    access_token?: string;
-    refresh_token?: string;
-  };
-  path?: string;
-  pathParameters?: {
-    proxy?: string;
-  };
-}
+import {
+  LambdaEvent,
+  LambdaResponse,
+  SignUpRequest,
+  SignInRequest,
+  CreateUserRequest,
+  RequestPasswordResetRequest,
+  ResetPasswordRequest,
+  DeleteUserRequest,
+  SignUpHandler,
+  SignInHandler,
+  EmailVerificationWebhookHandler,
+  CreateUserHandler,
+  RequestPasswordResetHandler,
+  ResetPasswordHandler,
+  DeleteUserHandler,
+  FetchUserHandler,
+  HealthHandler,
+  SyncRequestLogsHandler,
+  CORSHandler,
+} from "./types/handler";
 
 /**
  * CORS preflight handler for OPTIONS requests.
  * @param {LambdaEvent} event - Lambda event object.
- * @returns {Promise<object>} CORS headers response.
+ * @returns {Promise<LambdaResponse>} CORS headers response.
  */
-export const corsHandler = async (event: LambdaEvent) => {
+export const corsHandler: CORSHandler = async (event: LambdaEvent) => {
   return {
     statusCode: 200,
     headers: {
@@ -58,9 +60,9 @@ export const corsHandler = async (event: LambdaEvent) => {
 /**
  * Health check endpoint.
  * @param {LambdaEvent} event - Lambda event object.
- * @returns {Promise<object>} Health status response.
+ * @returns {Promise<LambdaResponse>} Health status response.
  */
-export const health = async (event: LambdaEvent) => {
+export const health: HealthHandler = async (event: LambdaEvent) => {
   try {
     const db = await DatabaseContext.connect();
     const supabase = SupabaseConnection.getInstance().getClient();
@@ -76,15 +78,15 @@ export const health = async (event: LambdaEvent) => {
 /**
  * User sign-up endpoint.
  * @param {LambdaEvent} event - Lambda event object containing email and password in the body.
- * @returns {Promise<object>} Sign-up result and message.
+ * @returns {Promise<LambdaResponse>} Sign-up result and message.
  */
-export const signUp = async (event: LambdaEvent) => {
+export const signUp: SignUpHandler = async (event: LambdaEvent) => {
   try {
     await rateLimiterMiddleware(event);
     const db = await DatabaseContext.connect();
     const supabase = SupabaseConnection.getInstance().getClient();
     const authService = new AuthService(db, supabase);
-    const { email, password } = JSON.parse(event.body || "{}");
+    const { email, password }: SignUpRequest = JSON.parse(event.body || "{}");
     await signUpValidator({ email, password });
     const result = await authService.signUp({ email, password });
     return successResponse({
@@ -100,9 +102,11 @@ export const signUp = async (event: LambdaEvent) => {
 /**
  * Email verification webhook endpoint.
  * @param {LambdaEvent} event - Lambda event object containing tokens in query parameters.
- * @returns {Promise<object>} Email verification result and message.
+ * @returns {Promise<LambdaResponse>} Email verification result and message.
  */
-export const emailVerificationWebhook = async (event: LambdaEvent) => {
+export const emailVerificationWebhook: EmailVerificationWebhookHandler = async (
+  event: LambdaEvent
+) => {
   try {
     await rateLimiterMiddleware(event);
     const db = await DatabaseContext.connect();
@@ -149,9 +153,9 @@ export const emailVerificationWebhook = async (event: LambdaEvent) => {
 /**
  * User sign-in endpoint.
  * @param {LambdaEvent} event - Lambda event object containing email and password in the body.
- * @returns {Promise<object>} Sign-in result and message.
+ * @returns {Promise<LambdaResponse>} Sign-in result and message.
  */
-export const signIn = async (event: LambdaEvent) => {
+export const signIn: SignInHandler = async (event: LambdaEvent) => {
   try {
     await rateLimiterMiddleware(event);
 
@@ -159,7 +163,7 @@ export const signIn = async (event: LambdaEvent) => {
     const supabase = SupabaseConnection.getInstance().getClient();
     const authService = new AuthService(db, supabase);
 
-    const { email, password } = JSON.parse(event.body || "{}");
+    const { email, password }: SignInRequest = JSON.parse(event.body || "{}");
     await signInValidator({ email, password });
     const result = await authService.signIn({ email, password });
 
@@ -176,9 +180,9 @@ export const signIn = async (event: LambdaEvent) => {
 /**
  * Fetch user details endpoint.
  * @param {LambdaEvent} event - Lambda event object with authenticated user.
- * @returns {Promise<object>} User details response.
+ * @returns {Promise<LambdaResponse>} User details response.
  */
-export const fetchUser = async (event: LambdaEvent) => {
+export const fetchUser: FetchUserHandler = async (event: LambdaEvent) => {
   try {
     const db = await DatabaseContext.connect();
     const supabase = SupabaseConnection.getInstance().getClient();
@@ -207,9 +211,9 @@ export const fetchUser = async (event: LambdaEvent) => {
 /**
  * Admin create user endpoint.
  * @param {LambdaEvent} event - Lambda event object containing new user details in the body.
- * @returns {Promise<object>} User creation result and message.
+ * @returns {Promise<LambdaResponse>} User creation result and message.
  */
-export const createUser = async (event: LambdaEvent) => {
+export const createUser: CreateUserHandler = async (event: LambdaEvent) => {
   try {
     await rateLimiterMiddleware(event);
 
@@ -223,7 +227,7 @@ export const createUser = async (event: LambdaEvent) => {
       email,
       password,
       role = "CUSTOMER",
-    } = JSON.parse(event.body || "{}");
+    }: CreateUserRequest = JSON.parse(event.body || "{}");
     // Basic validation
     await signUpValidator({ email, password });
     const result = await authService.signUp(
@@ -248,9 +252,11 @@ export const createUser = async (event: LambdaEvent) => {
 /**
  * Request password reset endpoint.
  * @param {LambdaEvent} event - Lambda event object containing email in the body.
- * @returns {Promise<object>} Password reset request result and message.
+ * @returns {Promise<LambdaResponse>} Password reset request result and message.
  */
-export const requestPasswordReset = async (event: LambdaEvent) => {
+export const requestPasswordReset: RequestPasswordResetHandler = async (
+  event: LambdaEvent
+) => {
   try {
     await rateLimiterMiddleware(event);
 
@@ -258,7 +264,9 @@ export const requestPasswordReset = async (event: LambdaEvent) => {
     const supabase = SupabaseConnection.getInstance().getClient();
     const authService = new AuthService(db, supabase);
 
-    const { email } = JSON.parse(event.body || "{}");
+    const { email }: RequestPasswordResetRequest = JSON.parse(
+      event.body || "{}"
+    );
     await requestPasswordResetValidator({ email });
     const result = await authService.requestPasswordReset({ email });
 
@@ -276,9 +284,11 @@ export const requestPasswordReset = async (event: LambdaEvent) => {
 /**
  * Reset password endpoint.
  * @param {LambdaEvent} event - Lambda event object containing accessToken, refreshToken, and newPassword in the body.
- * @returns {Promise<object>} Password reset result and message.
+ * @returns {Promise<LambdaResponse>} Password reset result and message.
  */
-export const resetPassword = async (event: LambdaEvent) => {
+export const resetPassword: ResetPasswordHandler = async (
+  event: LambdaEvent
+) => {
   try {
     await rateLimiterMiddleware(event);
 
@@ -286,9 +296,8 @@ export const resetPassword = async (event: LambdaEvent) => {
     const supabase = SupabaseConnection.getInstance().getClient();
     const authService = new AuthService(db, supabase);
 
-    const { accessToken, refreshToken, newPassword } = JSON.parse(
-      event.body || "{}"
-    );
+    const { accessToken, refreshToken, newPassword }: ResetPasswordRequest =
+      JSON.parse(event.body || "{}");
     await resetPasswordValidator({ accessToken, refreshToken, newPassword });
     const result = await authService.resetPassword({
       accessToken,
@@ -309,9 +318,9 @@ export const resetPassword = async (event: LambdaEvent) => {
 /**
  * Admin delete user endpoint.
  * @param {LambdaEvent} event - Lambda event object containing email in the body.
- * @returns {Promise<object>} User deletion result and message.
+ * @returns {Promise<LambdaResponse>} User deletion result and message.
  */
-export const deleteUser = async (event: LambdaEvent) => {
+export const deleteUser: DeleteUserHandler = async (event: LambdaEvent) => {
   try {
     await rateLimiterMiddleware(event);
 
@@ -322,7 +331,9 @@ export const deleteUser = async (event: LambdaEvent) => {
     // Validate admin token and role using middleware
     await validateAdmin(event);
 
-    const { email } = event.body ? JSON.parse(event.body) : {};
+    const { email }: DeleteUserRequest = event.body
+      ? JSON.parse(event.body)
+      : {};
     await deleteUserValidator({ email });
 
     const result = await authService.deleteUser({
@@ -343,9 +354,11 @@ export const deleteUser = async (event: LambdaEvent) => {
 /**
  * Sync request logs from Redis to the database.
  * @param {LambdaEvent} event - Lambda event object.
- * @returns {Promise<object>} Sync result and message.
+ * @returns {Promise<LambdaResponse>} Sync result and message.
  */
-export const syncRequestLogsHandler = async (event: LambdaEvent) => {
+export const syncRequestLogsHandler: SyncRequestLogsHandler = async (
+  event: LambdaEvent
+) => {
   try {
     const redis = RedisClient.getInstance();
     const db = await DatabaseContext.connect();
