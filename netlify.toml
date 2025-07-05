@@ -1,0 +1,66 @@
+[build]
+  publish = "docs"
+  command = ""
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/api-docs"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/docs"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/swagger"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/email-verification"
+  to = "/auth-callback.html"
+  status = 200
+
+[[redirects]]
+  from = "/reset-password"
+  to = "/auth-callback.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth-callback"
+  to = "/auth-callback.html"
+  status = 200
+
+# Handle CORS for API calls
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Cache static assets
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.yaml"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    Content-Type = "application/x-yaml" 

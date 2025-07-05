@@ -1,0 +1,26 @@
+node_modules/
+.env
+.serverless/
+coverage/
+.nyc_output/
+*.log
+.DS_Store
+
+# Netlify
+.netlify/
+.netlify/state.json
+
+# Environment files
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db

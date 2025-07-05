@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Outsized Auth API
+  version: 1.0.0
+  description: API documentation for the Outsized Auth service
+servers:
+  - url: https://74u6z8bv6b.execute-api.ap-south-1.amazonaws.com/prod
+    description: Production server
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is up
+  /auth/sign-up:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: User registered
+  /auth/email-verification:
+    get:
+      summary: Email verification webhook
+      description: Verify user email using Supabase tokens from query parameters
+      parameters:
+        - name: access_token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Supabase access token
+        - name: refresh_token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Supabase refresh token
+      responses:
+        "200":
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          email:
+                            type: string
+                          verified:
+                            type: boolean
+        "400":
+          description: Invalid tokens
+        "404":
+          description: User not found
+  /auth/sign-in:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: User signed in
+  /user:
+    post:
+      summary: Create user (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                role:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: User created
+    get:
+      summary: Fetch user details
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User details
+    delete:
+      summary: Delete user (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        "200":
+          description: User deleted
+  /auth/request-password-reset:
+    post:
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        "200":
+          description: Password reset requested
+  /auth/reset-password:
+    post:
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                refreshToken:
+                  type: string
+                newPassword:
+                  type: string
+              required:
+                - accessToken
+                - refreshToken
+                - newPassword
+      responses:
+        "200":
+          description: Password reset successful
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

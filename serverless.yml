@@ -1,0 +1,188 @@
+service: outsized
+frameworkVersion: "3"
+useDotenv: true
+
+package:
+  individually: true
+  patterns:
+    - "!tests/**"
+
+custom:
+  prune:
+    automatic: true
+    number: 2
+  serverless-offline:
+    httpPort: 8000
+    host: localhost
+
+params:
+  prod:
+    env: prod
+    awsRegion: ap-south-1
+    deploymentBucket: outsized-serverless-deployment
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  timeout: 900
+  memorySize: 512
+  architecture: x86_64
+  region: ${param:awsRegion}
+  deploymentBucket:
+    name: ${param:deploymentBucket}
+
+functions:
+  cors:
+    handler: handler.corsHandler
+    name: ${sls:stage}-cors
+    description: CORS preflight handler
+    timeout: 30
+    events:
+      - http:
+          path: /
+          method: OPTIONS
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: OPTIONS
+          cors: true
+    tags:
+      service: outsized
+
+  health:
+    handler: handler.health
+    name: ${sls:stage}-health
+    description: server status check route
+    timeout: 30
+    events:
+      - http:
+          path: /health
+          method: GET
+          cors: true
+    tags:
+      service: outsized
+
+  sign-up:
+    handler: handler.signUp
+    name: ${sls:stage}-sign-up
+    description: route to sign-up with email
+    timeout: 30
+    events:
+      - http:
+          path: /auth/sign-up
+          method: POST
+          cors: true
+    tags:
+      service: outsized
+
+  email-verification-webhook:
+    handler: handler.emailVerificationWebhook
+    name: ${sls:stage}-email-verification-webhook
+    description: route to verify email webhook
+    timeout: 30
+    events:
+      - http:
+          path: /auth/email-verification
+          method: GET
+          cors: true
+    tags:
+      service: outsized
+
+  sign-in:
+    handler: handler.signIn
+    name: ${sls:stage}-sign-in
+    description: route to sign-in with email
+    timeout: 30
+    events:
+      - http:
+          path: /auth/sign-in
+          method: POST
+          cors: true
+    tags:
+      service: outsized
+
+  create-user:
+    handler: handler.createUser
+    name: ${sls:stage}-create-user
+    description: route to create user
+    timeout: 30
+    events:
+      - http:
+          path: /user
+          method: POST
+          cors: true
+    tags:
+      service: outsized
+
+  fetch-user:
+    handler: handler.fetchUser
+    name: ${sls:stage}-fetch-user
+    description: route to fetch user profile
+    timeout: 30
+    events:
+      - http:
+          path: /user
+          method: GET
+          cors: true
+    tags:
+      service: outsized
+
+  request-password-reset:
+    handler: handler.requestPasswordReset
+    name: ${sls:stage}-request-password-reset
+    description: route to request password reset
+    timeout: 30
+    events:
+      - http:
+          path: /auth/request-password-reset
+          method: POST
+          cors: true
+    tags:
+      service: outsized
+
+  reset-password:
+    handler: handler.resetPassword
+    name: ${sls:stage}-reset-password
+    description: route to reset password
+    timeout: 30
+    events:
+      - http:
+          path: /auth/reset-password
+          method: POST
+          cors: true
+    tags:
+      service: outsized
+
+  delete-user:
+    handler: handler.deleteUser
+    name: ${sls:stage}-delete-user
+    description: route to delete user
+    timeout: 30
+    events:
+      - http:
+          path: user
+          method: DELETE
+          cors: true
+    tags:
+      service: outsized
+
+  syncRequestLogs:
+    handler: handler.syncRequestLogsHandler
+    name: ${sls:stage}-sync-request-logs
+    description: Syncs request logs from Redis to the database every 30 minutes
+    timeout: 900
+    tags:
+      service: outsized
+      purpose: redis-to-db-log-sync
+    events:
+      - schedule:
+          rate: cron(0,30 * * * ? *)
+          enabled: false
+          name: syncRequestLogsEvery30Minutes
+          description: Trigger log sync from Redis to DB every 30 minutes
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+  - serverless-prune-plugin
+  - serverless-plugin-typescript
